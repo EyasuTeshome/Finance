@@ -1,5 +1,4 @@
 import { NavLink } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 
 const links = [
   { to: '/',             icon: '⬡', label: 'Dashboard'     },
@@ -13,7 +12,6 @@ const links = [
 ];
 
 export default function Sidebar() {
-  const { logout } = useAuth();
   return (
     <aside className="w-56 flex-shrink-0 bg-surface-1 border-r border-white/5 flex flex-col">
       <div className="px-5 py-6 border-b border-white/5">
@@ -38,15 +36,6 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="px-2 pb-4">
-        <button
-          onClick={logout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-500 hover:text-white hover:bg-white/5 transition-colors"
-        >
-          <span className="text-base w-4 text-center">→</span>
-          Sign out
-        </button>
-      </div>
     </aside>
   );
 }

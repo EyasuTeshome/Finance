@@ -1,8 +1,7 @@
 const router = require('express').Router();
-const { requireAuth } = require('../middleware/auth');
 const db = require('../db/index');
 
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const [entries, snapshots] = await Promise.all([
       db.query('SELECT * FROM networth_entries ORDER BY type, name'),
@@ -14,7 +13,7 @@ router.get('/', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/entries', requireAuth, async (req, res) => {
+router.post('/entries', async (req, res) => {
   try {
     const { type, name, value } = req.body;
     const [row] = await db.query(
@@ -26,7 +25,7 @@ router.post('/entries', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.put('/entries/:id', requireAuth, async (req, res) => {
+router.put('/entries/:id', async (req, res) => {
   try {
     const { name, value } = req.body;
     await db.query(
@@ -38,7 +37,7 @@ router.put('/entries/:id', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.delete('/entries/:id', requireAuth, async (req, res) => {
+router.delete('/entries/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM networth_entries WHERE id=$1', [req.params.id]);
     await snapshotNetWorth();

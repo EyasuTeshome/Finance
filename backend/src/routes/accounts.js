@@ -1,14 +1,13 @@
 const router = require('express').Router();
-const { requireAuth } = require('../middleware/auth');
 const db = require('../db/index');
 
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     res.json(await db.query('SELECT * FROM accounts ORDER BY name'));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { name, currency, balance } = req.body;
     const [row] = await db.query(
@@ -19,7 +18,7 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.patch('/:id', requireAuth, async (req, res) => {
+router.patch('/:id', async (req, res) => {
   try {
     const { name, balance } = req.body;
     await db.query(
@@ -30,7 +29,7 @@ router.patch('/:id', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM accounts WHERE id=$1', [req.params.id]);
     res.json({ ok: true });

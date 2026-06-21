@@ -1,11 +1,10 @@
 const router = require('express').Router();
-const { requireAuth } = require('../middleware/auth');
 const { parse } = require('csv-parse/sync');
 const { categorise } = require('../services/categorise');
 const { detectSubscriptions } = require('../services/subscriptions');
 const db = require('../db/index');
 
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { search, category, account_id, from, to, limit = 50, offset = 0 } = req.query;
     const conditions = ['is_split = false'];
@@ -34,7 +33,7 @@ router.get('/', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { account_id, amount, currency, date, description, merchant_name, category } = req.body;
     if (!account_id || amount === undefined || !date) {
@@ -50,28 +49,28 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM transactions WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.patch('/:id/category', requireAuth, async (req, res) => {
+router.patch('/:id/category', async (req, res) => {
   try {
     await db.query('UPDATE transactions SET category=$1 WHERE id=$2', [req.body.category, req.params.id]);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.patch('/:id/notes', requireAuth, async (req, res) => {
+router.patch('/:id/notes', async (req, res) => {
   try {
     await db.query('UPDATE transactions SET notes=$1 WHERE id=$2', [req.body.notes, req.params.id]);
     res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/:id/split', requireAuth, async (req, res) => {
+router.post('/:id/split', async (req, res) => {
   try {
     const { splits } = req.body;
     const parent = await db.one('SELECT * FROM transactions WHERE id=$1', [req.params.id]);
@@ -105,7 +104,7 @@ router.post('/:id/split', requireAuth, async (req, res) => {
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-router.post('/import', requireAuth, upload.single('file'), async (req, res) => {
+router.post('/import', upload.single('file'), async (req, res) => {
   try {
     const records   = parse(req.file.buffer, { columns: true, skip_empty_lines: true });
     const accountId = req.body.account_id ? Number(req.body.account_id) : null;

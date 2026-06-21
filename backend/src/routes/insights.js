@@ -1,5 +1,4 @@
 const router = require('express').Router();
-const { requireAuth } = require('../middleware/auth');
 const db = require('../db/index');
 
 function monthStr(offsetMonths = 0) {
@@ -8,7 +7,7 @@ function monthStr(offsetMonths = 0) {
   return d.toISOString().slice(0, 7);
 }
 
-router.get('/dashboard', requireAuth, async (req, res) => {
+router.get('/dashboard', async (req, res) => {
   try {
     const m = monthStr();
 
@@ -54,7 +53,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/charts', requireAuth, async (req, res) => {
+router.get('/charts', async (req, res) => {
   try {
     const monthly = await Promise.all(
       Array.from({ length: 6 }, (_, i) => 5 - i).map(async i => {
@@ -85,7 +84,7 @@ router.get('/charts', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/categories', requireAuth, async (req, res) => {
+router.get('/categories', async (req, res) => {
   try {
     const rows = await db.query('SELECT DISTINCT category FROM transactions ORDER BY category');
     res.json(rows.map(r => r.category));

@@ -1,10 +1,9 @@
 const router = require('express').Router();
-const { requireAuth } = require('../middleware/auth');
 const db = require('../db/index');
 
 function currentMonth() { return new Date().toISOString().slice(0, 7); }
 
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const month   = req.query.month || currentMonth();
     const budgets = await db.query('SELECT * FROM budgets ORDER BY category');
@@ -37,7 +36,7 @@ router.get('/', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { category, monthly_limit, rollover, color } = req.body;
     const [row] = await db.query(
@@ -48,7 +47,7 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const { monthly_limit, rollover, color } = req.body;
     await db.query(
@@ -59,7 +58,7 @@ router.put('/:id', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM budgets WHERE id=$1', [req.params.id]);
     res.json({ ok: true });

@@ -21,7 +21,6 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 
 app.get('/api/health', (_, res) => res.json({ ok: true }));
 
-app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/accounts',      require('./routes/accounts'));
 app.use('/api/transactions',  require('./routes/transactions'));
 app.use('/api/budgets',       require('./routes/budgets'));

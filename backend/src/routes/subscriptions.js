@@ -1,8 +1,7 @@
 const router = require('express').Router();
-const { requireAuth } = require('../middleware/auth');
 const db = require('../db/index');
 
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const subs = await db.query('SELECT * FROM subscriptions ORDER BY next_billing ASC');
     const monthly_total = subs.reduce((sum, s) => {
@@ -16,7 +15,7 @@ router.get('/', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { merchant_name, amount, currency, frequency, next_billing, category } = req.body;
     const [row] = await db.query(`
@@ -27,7 +26,7 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.delete('/:id', requireAuth, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     await db.query('DELETE FROM subscriptions WHERE id=$1', [req.params.id]);
     res.json({ ok: true });

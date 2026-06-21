@@ -12,7 +12,5 @@ services:
         value: production
       # Set these manually in the Render dashboard:
       # DATABASE_URL       — Neon connection string (postgresql://...)
-      # JWT_SECRET         — 64-char random hex
-      # ADMIN_PASSWORD_HASH — bcrypt hash of your password
       # FRONTEND_URL       — https://<your-vercel-app>.vercel.app
       # CORS_ORIGIN        — https://<your-vercel-app>.vercel.app
