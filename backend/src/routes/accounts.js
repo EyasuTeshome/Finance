@@ -19,4 +19,22 @@ router.post('/', requireAuth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+router.patch('/:id', requireAuth, async (req, res) => {
+  try {
+    const { name, balance } = req.body;
+    await db.query(
+      'UPDATE accounts SET name = COALESCE($1, name), balance = COALESCE($2, balance), last_synced = NOW() WHERE id=$3',
+      [name ?? null, balance ?? null, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    await db.query('DELETE FROM accounts WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;

@@ -2,9 +2,16 @@ const db = require('./index');
 
 async function runMigrations() {
   await db.pool.query(`
+    DROP TABLE IF EXISTS truelayer_tokens;
+    DROP TABLE IF EXISTS gocardless_requisitions;
+    DROP TABLE IF EXISTS gocardless_tokens;
+    ALTER TABLE IF EXISTS accounts DROP COLUMN IF EXISTS tl_account_id;
+    ALTER TABLE IF EXISTS accounts DROP COLUMN IF EXISTS gc_id;
+    ALTER TABLE IF EXISTS transactions DROP COLUMN IF EXISTS tl_transaction_id;
+    ALTER TABLE IF EXISTS transactions DROP COLUMN IF EXISTS gc_id;
+
     CREATE TABLE IF NOT EXISTS accounts (
       id          SERIAL PRIMARY KEY,
-      gc_id       TEXT UNIQUE,
       name        TEXT NOT NULL,
       iban        TEXT,
       currency    TEXT DEFAULT 'EUR',
@@ -15,7 +22,6 @@ async function runMigrations() {
 
     CREATE TABLE IF NOT EXISTS transactions (
       id              SERIAL PRIMARY KEY,
-      gc_id           TEXT UNIQUE,
       account_id      INTEGER REFERENCES accounts(id),
       amount          NUMERIC NOT NULL,
       currency        TEXT DEFAULT 'EUR',
@@ -87,22 +93,6 @@ async function runMigrations() {
       category      TEXT DEFAULT 'Subscriptions',
       is_manual     BOOLEAN DEFAULT FALSE,
       created_at    TIMESTAMPTZ DEFAULT NOW()
-    );
-
-    CREATE TABLE IF NOT EXISTS gocardless_tokens (
-      id            INTEGER PRIMARY KEY CHECK(id=1),
-      access_token  TEXT,
-      refresh_token TEXT,
-      access_exp    TIMESTAMPTZ,
-      refresh_exp   TIMESTAMPTZ
-    );
-
-    CREATE TABLE IF NOT EXISTS gocardless_requisitions (
-      id              SERIAL PRIMARY KEY,
-      requisition_id  TEXT NOT NULL,
-      status          TEXT DEFAULT 'pending',
-      link            TEXT,
-      created_at      TIMESTAMPTZ DEFAULT NOW()
     );
 
     CREATE TABLE IF NOT EXISTS category_rules (

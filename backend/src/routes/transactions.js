@@ -2,6 +2,7 @@ const router = require('express').Router();
 const { requireAuth } = require('../middleware/auth');
 const { parse } = require('csv-parse/sync');
 const { categorise } = require('../services/categorise');
+const { detectSubscriptions } = require('../services/subscriptions');
 const db = require('../db/index');
 
 router.get('/', requireAuth, async (req, res) => {
@@ -30,6 +31,29 @@ router.get('/', requireAuth, async (req, res) => {
     );
 
     res.json({ transactions: rows, total: parseInt(countRow.total) });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/', requireAuth, async (req, res) => {
+  try {
+    const { account_id, amount, currency, date, description, merchant_name, category } = req.body;
+    if (!account_id || amount === undefined || !date) {
+      return res.status(400).json({ error: 'account_id, amount and date are required' });
+    }
+    const resolvedCategory = category || await categorise(description || '', merchant_name || '');
+    const [row] = await db.query(`
+      INSERT INTO transactions (account_id, amount, currency, date, description, merchant_name, category)
+      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id
+    `, [account_id, amount, currency || 'EUR', date, description || '', merchant_name || '', resolvedCategory]);
+    await detectSubscriptions();
+    res.json({ id: row.id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    await db.query('DELETE FROM transactions WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -109,6 +133,7 @@ router.post('/import', requireAuth, upload.single('file'), async (req, res) => {
       await client.query('ROLLBACK'); throw e;
     } finally { client.release(); }
 
+    await detectSubscriptions();
     res.json({ imported });
   } catch (err) { res.status(400).json({ error: err.message }); }
 });

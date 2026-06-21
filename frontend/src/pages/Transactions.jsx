@@ -31,6 +31,9 @@ export default function Transactions() {
   const [offset, setOffset]   = useState(0);
   const [editing, setEditing] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [form, setForm] = useState({ account_id: '', amount: '', currency: 'EUR', date: '', description: '', merchant_name: '', category: '' });
   const fileRef = useRef();
   const LIMIT = 50;
 
@@ -49,11 +52,24 @@ export default function Transactions() {
   }, [search, category, from, to]);
 
   useEffect(() => { load(0); }, [load]);
+  useEffect(() => { api.get('/accounts').then(r => setAccounts(r.data)).catch(() => {}); }, []);
 
   async function saveCategory(id, cat) {
     await api.patch(`/transactions/${id}/category`, { category: cat });
     setTxns(prev => prev.map(t => t.id === id ? { ...t, category: cat } : t));
     setEditing(null);
+  }
+
+  async function addTransaction(e) {
+    e.preventDefault();
+    try {
+      await api.post('/transactions', { ...form, amount: Number(form.amount) });
+      setAdding(false);
+      setForm({ account_id: '', amount: '', currency: 'EUR', date: '', description: '', merchant_name: '', category: '' });
+      load(0);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to add transaction');
+    }
   }
 
   async function handleImport(e) {
@@ -79,6 +95,12 @@ export default function Transactions() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-semibold text-white">Transactions</h1>
         <div className="flex gap-2">
+          <button
+            onClick={() => setAdding(true)}
+            className="px-3 py-1.5 text-sm bg-accent hover:bg-accent-hover text-white rounded-lg font-medium transition-colors"
+          >
+            + Add transaction
+          </button>
           <input ref={fileRef} type="file" accept=".csv" onChange={handleImport} className="hidden" />
           <button
             onClick={() => fileRef.current.click()}
@@ -115,7 +137,7 @@ export default function Transactions() {
         {loading ? (
           <div className="p-8 text-center text-gray-500 text-sm">Loading…</div>
         ) : txns.length === 0 ? (
-          <EmptyState icon="↔" title="No transactions" description="Import a CSV or connect via GoCardless in Settings." />
+          <EmptyState icon="↔" title="No transactions" description="Import a CSV or add a transaction manually." />
         ) : (
           <>
             <ul className="divide-y divide-white/5">
@@ -154,6 +176,41 @@ export default function Transactions() {
           </>
         )}
       </Card>
+
+      {adding && (
+        <Modal title="Add transaction" onClose={() => setAdding(false)}>
+          <form onSubmit={addTransaction} className="space-y-3">
+            <select required value={form.account_id} onChange={e => setForm({ ...form, account_id: e.target.value })}
+              className="w-full bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
+              <option value="">Select account…</option>
+              {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+            <div className="grid grid-cols-2 gap-3">
+              <input required type="number" step="0.01" placeholder="Amount (negative = expense)" value={form.amount}
+                onChange={e => setForm({ ...form, amount: e.target.value })}
+                className="bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none" />
+              <input required type="date" value={form.date}
+                onChange={e => setForm({ ...form, date: e.target.value })}
+                className="bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none" />
+            </div>
+            <input placeholder="Description" value={form.description}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              className="w-full bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none" />
+            <input placeholder="Merchant name" value={form.merchant_name}
+              onChange={e => setForm({ ...form, merchant_name: e.target.value })}
+              className="w-full bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none" />
+            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
+              className="w-full bg-surface border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
+              <option value="">Auto-categorise</option>
+              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            </select>
+            <button type="submit"
+              className="w-full px-4 py-2 bg-accent hover:bg-accent-hover text-white text-sm rounded-lg font-medium transition-colors">
+              Add transaction
+            </button>
+          </form>
+        </Modal>
+      )}
 
       {editing && (
         <Modal title="Change category" onClose={() => setEditing(null)}>

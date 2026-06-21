@@ -2,7 +2,6 @@ require('dotenv').config();
 const express  = require('express');
 const cors     = require('cors');
 const rateLimit = require('express-rate-limit');
-const cron     = require('node-cron');
 const { runMigrations } = require('./db/schema');
 
 const app = express();
@@ -30,21 +29,10 @@ app.use('/api/goals',         require('./routes/goals'));
 app.use('/api/networth',      require('./routes/networth'));
 app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/insights',      require('./routes/insights'));
-app.use('/api/gocardless',    require('./routes/gocardless'));
 
 app.use((err, req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: 'Internal server error' });
-});
-
-cron.schedule('0 3 * * *', async () => {
-  try {
-    const { syncAllAccounts } = require('./services/sync');
-    await syncAllAccounts();
-    console.log('Nightly sync complete');
-  } catch (e) {
-    console.error('Nightly sync failed:', e.message);
-  }
 });
 
 const PORT = process.env.PORT || 3001;

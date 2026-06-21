@@ -1,93 +1,49 @@
 # Personal Finance App
 
-A self-hosted, privacy-first alternative to Monarch Money / YNAB. All data stays on your server. No third-party services except GoCardless (EU PSD2 regulated) for Revolut transaction sync.
+A self-hosted, privacy-first alternative to Monarch Money / YNAB. All data stays in your own Neon Postgres database. No bank credentials or open-banking integrations — accounts and balances are managed manually, and transactions come from CSV import or manual entry.
 
 ---
 
 ## Stack
 
 | Layer    | Tech                                   |
-|----------|----------------------------------------|
-| Backend  | Node.js 20 + Express                   |
-| Database | SQLite (single file, easy backup)      |
-| Frontend | React 18 + Tailwind CSS + Recharts     |
+|----------|-----------------------------------------|
+| Backend  | Node.js 20 + Express, hosted on Render |
+| Database | PostgreSQL (Neon)                      |
+| Frontend | React 18 + Tailwind CSS + Recharts, hosted on Vercel |
 | Auth     | Single-user bcrypt password + JWT      |
-| Bank     | GoCardless Open Banking API (Nordigen) |
-| Hosting  | Docker + docker-compose + Nginx        |
 
 ---
 
-## Quick start (VPS)
+## Quick start
 
-### 1. Clone
+### 1. Database (Neon)
 
-```bash
-git clone <your-repo-url> finance
-cd finance
-```
+Create a free project at https://neon.tech, copy the connection string (looks like `postgresql://user:password@ep-xxx.neon.tech/neondb?sslmode=require`).
 
-### 2. Configure environment
+### 2. Backend (Render)
 
-```bash
-cp .env.example .env
-```
+Deploy `backend/` as a Web Service on Render (uses `backend/render.yaml`). Set these env vars in the Render dashboard:
 
-Edit `.env`:
+- `DATABASE_URL` — your Neon connection string
+- `JWT_SECRET` — generate with `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
+- `ADMIN_PASSWORD_HASH` — generate with `node -e "const b=require('bcryptjs'); console.log(b.hashSync('yourpassword', 12))"`
+- `FRONTEND_URL` / `CORS_ORIGIN` — your Vercel app URL
 
-**Generate a JWT secret:**
-```bash
-node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-```
+### 3. Frontend (Vercel)
 
-**Hash your login password:**
-```bash
-node -e "const b=require('bcryptjs'); console.log(b.hashSync('yourpassword', 12))"
-```
-
-**GoCardless credentials:**
-1. Register free at https://bankaccountdata.gocardless.com/
-2. Create a new application — copy Secret ID and Secret Key into `.env`
-3. Find your Revolut institution ID:
-   ```bash
-   curl -H "Authorization: Bearer <access_token>" \
-     "https://bankaccountdata.gocardless.com/api/v2/institutions/?country=ie"
-   ```
-   Common IDs: `REVOLUT_REVOGB21` (UK/IE), `REVOLUT_REVOLT21` (other EU)
-
-Set `GOCARDLESS_REDIRECT_URL` to: `https://yourdomain.com/api/gocardless/callback`
-
-### 3. TLS certificates
-
-Place your certificates in `./nginx/certs/`:
-```
-nginx/certs/fullchain.pem
-nginx/certs/privkey.pem
-```
-
-**Using Let's Encrypt:**
-```bash
-certbot certonly --standalone -d yourdomain.com
-cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem nginx/certs/
-cp /etc/letsencrypt/live/yourdomain.com/privkey.pem   nginx/certs/
-```
-
-### 4. Deploy
-
-```bash
-docker compose up -d --build
-```
-
-The app is now running at `https://yourdomain.com`.
+Deploy `frontend/` as a Vercel project. Set `VITE_API_URL` to `https://<your-render-app>.onrender.com/api` in the Vercel dashboard.
 
 ---
 
-## Connecting Revolut
+## Managing accounts & transactions
 
-1. Log in and go to **Settings**
-2. Click **Connect Revolut** — you'll be redirected to GoCardless
-3. Authorise access to your Revolut account
-4. You'll be redirected back; transactions start importing immediately
-5. Automatic nightly sync runs at 03:00 server time
+1. Log in and go to **Settings** → add one or more accounts (name, currency, starting balance).
+2. On the **Transactions** page, either:
+   - **Import CSV** — upload a bank export (columns like `Date`/`Amount`/`Description`/`Merchant` are auto-detected), or
+   - **Add transaction** — enter a single transaction by hand.
+3. Update an account's balance any time from **Settings → Edit**.
+4. Subscriptions are auto-detected from recurring transactions after each import/add.
 
 ---
 
@@ -96,34 +52,15 @@ The app is now running at `https://yourdomain.com`.
 | Feature              | Description |
 |----------------------|-------------|
 | Dashboard            | Balance, income/spending, budget rings, upcoming payments |
-| Transactions         | Full history, search, filter, re-categorise, CSV import |
+| Transactions         | Full history, search, filter, re-categorise, CSV import, manual entry |
 | Budgets              | Monthly limits, optional rollover, progress rings, alerts at 80%/100% |
 | Charts & Insights    | Monthly bar chart, category donut, 6-month trend |
 | Subscriptions        | Auto-detected from transactions + manual, monthly total, upcoming alerts |
 | Goals                | Target + deadline + progress bar |
 | Net Worth            | Assets/liabilities, historical trend chart |
-| GoCardless sync      | OAuth flow + nightly auto-sync at 03:00 |
-| CSV import           | Revolut CSV format |
+| Accounts             | Manual accounts with editable balances |
+| CSV import           | Generic bank CSV format |
 | Auto-categorisation  | Rule-based merchant name matching |
-
----
-
-## Backup
-
-The entire database is a single file: `./data/finance.db`
-
-```bash
-cp ./data/finance.db ./backups/finance-$(date +%Y%m%d).db
-```
-
----
-
-## Updating
-
-```bash
-git pull
-docker compose up -d --build
-```
 
 ---
 
@@ -133,13 +70,13 @@ docker compose up -d --build
 .
 ├── backend/
 │   ├── src/
-│   │   ├── server.js          # Express app + cron scheduler
-│   │   ├── db/                # SQLite connection + schema migrations
-│   │   ├── middleware/auth.js  # JWT auth middleware
-│   │   ├── routes/            # auth, transactions, budgets, goals, networth,
-│   │   │                      # subscriptions, insights, gocardless
-│   │   └── services/          # gocardless, sync, categorise, subscriptions
-│   └── Dockerfile
+│   │   ├── server.js          # Express app
+│   │   ├── db/                # Postgres connection + schema migrations
+│   │   ├── middleware/auth.js # JWT auth middleware
+│   │   ├── routes/            # auth, accounts, transactions, budgets, goals,
+│   │   │                      # networth, subscriptions, insights
+│   │   └── services/          # categorise, subscriptions
+│   └── render.yaml
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx            # Router + auth guard
@@ -148,11 +85,7 @@ docker compose up -d --build
 │   │   │                      # Subscriptions, Goals, NetWorth, Settings, Login
 │   │   ├── hooks/useAuth.jsx  # Auth context + JWT storage
 │   │   └── services/api.js    # Axios client with auth interceptor
-│   └── Dockerfile
-├── nginx/
-│   └── default.conf           # Reverse proxy + TLS termination
-├── data/                      # SQLite DB (gitignored, persisted via volume)
-├── docker-compose.yml
+│   └── vercel.json
 ├── .env.example
 └── README.md
 ```
